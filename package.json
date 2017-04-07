@@ -1,5 +1,5 @@
 {
-  "name": "wowzajsapi",
+  "name": "wowza-js-api",
   "version": "1.0.0",
   "description": "JS wrapper for cURL REST API for Wowza Streaming Engine",
   "main": "wowza.js",
