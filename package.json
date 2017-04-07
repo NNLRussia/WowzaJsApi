@@ -1,0 +1,25 @@
+{
+  "name": "wowzajsapi",
+  "version": "1.0.0",
+  "description": "JS wrapper for cURL REST API for Wowza Streaming Engine",
+  "main": "wowza.js",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NNLRussia/WowzaJsApi.git"
+  },
+  "keywords": [
+    "wowza",
+    "wowzastreamingengine"
+  ],
+  "author": "NNLRussia",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NNLRussia/WowzaJsApi/issues"
+  },
+  "homepage": "https://github.com/NNLRussia/WowzaJsApi#readme"
+}
