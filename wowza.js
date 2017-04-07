@@ -90,7 +90,7 @@ class WowzaAPI {
 	/**
 	 *Get specific stream configuration
 	 *
-	 * @function getStreamFilesList
+	 * @function getStreamConfiguration
 	 * @param {Object} [options]
 	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
 	 * @param {string} [options.streamFile = 'myStream.stream'] name of a streamfile (default value can be another if it was passed to the class constructor)

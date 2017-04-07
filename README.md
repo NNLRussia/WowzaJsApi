@@ -4,7 +4,7 @@
 
 -   [WowzaAPI](#wowzaapi)
     -   [getStreamFilesList](#getstreamfileslist)
-    -   [getStreamFilesList](#getstreamfileslist-1)
+    -   [getStreamConfiguration](#getstreamconfiguration)
     -   [createRecorder](#createrecorder)
     -   [stopRecording](#stoprecording)
     -   [getRecordersList](#getrecorderslist)
@@ -63,7 +63,7 @@ wowza.getStreamFilesList({application: 'webrtc', streamFile: 'ipCamera'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** promise which resolve by object which contains array of streamFiles and it's confifurations
 
-### getStreamFilesList
+### getStreamConfiguration
 
 Get specific stream configuration
 
