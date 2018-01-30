@@ -1,0 +1,53 @@
+{
+  "_from": "http-digest-client",
+  "_id": "http-digest-client@0.0.3",
+  "_inBundle": false,
+  "_integrity": "sha1-eOAY9cB1a8dNmj6k/iCtb9vGryQ=",
+  "_location": "/http-digest-client",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "http-digest-client",
+    "name": "http-digest-client",
+    "escapedName": "http-digest-client",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/http-digest-client/-/http-digest-client-0.0.3.tgz",
+  "_shasum": "78e018f5c0756bc74d9a3ea4fe20ad6fdbc6af24",
+  "_spec": "http-digest-client",
+  "_where": "E:\\SVN\\notxg\\ipaggregator_wowza",
+  "author": {
+    "name": "Simon Ljungberg",
+    "email": "hi@iamsim.me"
+  },
+  "bugs": {
+    "url": "https://github.com/simme/node-http-digest-client/issues"
+  },
+  "bundleDependencies": false,
+  "contributors": [
+    {
+      "name": "Paul Gration",
+      "email": "pmgration@gmail.com"
+    }
+  ],
+  "deprecated": false,
+  "description": "Perform request agains digest authenticated servers.",
+  "homepage": "https://github.com/simme/node-http-digest-client#readme",
+  "main": "http-digest-client.js",
+  "name": "http-digest-client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simme/node-http-digest-client.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "0.0.3"
+}

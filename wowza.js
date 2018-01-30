@@ -1,6 +1,7 @@
 'use strict'
 
-let http = require('http'),
+let http,
+	httpClient = require('./http-digest-client/http-digest-client'),
 	querystring = require('querystring');
 
 /**
@@ -15,7 +16,7 @@ let http = require('http'),
  * @param {string} [options.application = 'application'] name of an application
  * @param {string} [options.appInstance = '_definst_'] name of an application instance
  * @param {string} [options.mediaCasterType = 'rtp'] caster type
- * 
+ *
  * @example
  * let Wowza = require('./wowza.js');
  *	wowza = new Wowza({
@@ -26,7 +27,7 @@ let http = require('http'),
  *		mediaCasterType: 'rtp'         // default is 'rtp'
  *	});
  * wowza.someWowzaMethod(); // now you can use the JS wowza API.
- * 
+ *
  */
 
 class WowzaAPI {
@@ -38,7 +39,13 @@ class WowzaAPI {
 		this.appInstance = options.appInstance || '_definst_';
 		this.mediaCasterType = options.mediaCasterType || 'rtp';
 		this.commonRequestUrl = `http://${this.wowzaAdress}:8087`;
-
+		if ( options.username != '' && options.password != '' ){
+				console.log("using digest library");
+				http = httpClient(options.username, options.password);
+		} else {
+				console.log("using native library");
+				http = require("http");
+		}
 		this.httpOptions = {
 			host: this.wowzaAdress,
 			port: '8087',
@@ -51,21 +58,50 @@ class WowzaAPI {
 		}
 	}
 
+
+	/**
+	 *Get a list of streamfiles
+	 *
+	 * @function restartApplication
+	 * @param {Object} [options]
+	 * @param {string}  [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @return {Promise} promise which resolve by object which contains array of streamFiles and it's confifurations
+	 *
+	 */
+	restartApplication(options) {
+
+		let application = this.application;
+		if (options && options.application) application = options.application;
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'GET';
+			options.path = `${this.httpOptions.path}/applications/${application}/actions/restart`;
+
+			//getting request object
+			let req = http.request(options, this.responseHandler(resolve, reject));
+			req.on('error', (e) => {throw new Error(`problem with request: ${e.message}`)});
+			req.end();
+		});
+	}
+
 	/**
 	 *Get a list of streamfiles
 	 *
 	 * @function getStreamFilesList
 	 * @param {Object} [options]
 	 * @param {string}  [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
-	 * @return {Promise} promise which resolve by object which contains array of streamFiles and it's confifurations 
+	 * @return {Promise} promise which resolve by object which contains array of streamFiles and it's confifurations
 	 *
-	 * @example 
+	 * @example
 	 * wowza.getStreamFilesList({application: 'webrtc', streamFile: 'ipCamera'})
 	 * 	.then( responseMsg => console.log(responseMsg))
 	 * 	.catch( errorMsg => console.log(errorMsg));
 	 *
 	 * // Wowza answer example:
-	 * //{serverName: '_defaultServer_', streamFiles: [{id: 'ipCamera2', href: '/v2/servers/_defaultServer_/vhosts/_defaultVHost_/applications/webrtc/streamfiles/ipCamera2'}]} 
+	 * //{serverName: '_defaultServer_', streamFiles: [{id: 'ipCamera2', href: '/v2/servers/_defaultServer_/vhosts/_defaultVHost_/applications/webrtc/streamfiles/ipCamera2'}]}
 	 */
 	getStreamFilesList(options) {
 
@@ -80,9 +116,30 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/streamfiles`;
 
 			//getting request object
-			let req = http.request(options, this.responceHandler(resolve, reject));
+			let req = http.request(options, this.responseHandler(resolve, reject));
 			req.on('error', (e) => {throw new Error(`problem with request: ${e.message}`)});
+			req.end();
+		});
+	}
 
+	getApplicationConfig(options) {
+
+		let application = this.application;
+
+		if (options) {
+			application = options.application || this.application;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'GET';
+			options.path = `${this.httpOptions.path}/applications/${application}`;
+			console.log("options.path", options.path, options);
+			//getting request object
+			let req = http.request(options, this.responseHandler(resolve, reject));
+			req.on('error', (e) => {throw new Error(`problem with request: ${e.message}`)});
 			req.end();
 		});
 	}
@@ -94,13 +151,13 @@ class WowzaAPI {
 	 * @param {Object} [options]
 	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
 	 * @param {string} [options.streamFile = 'myStream.stream'] name of a streamfile (default value can be another if it was passed to the class constructor)
-	 * @return {Promise} promise which resolve by stream configurations object 
+	 * @return {Promise} promise which resolve by stream configurations object
 	 *
-	 * @example 
+	 * @example
 	 * wowza.getStreamConfiguration()
 	 *	.then(response => console.log(response))
 	 *	.catch(errorMsg => console.log(errorMsg));
-	 * // Wowza answer example: 
+	 * // Wowza answer example:
 	 * // {version: '1488715914000', serverName: '_defaultServer_', uri: 'rtsp://admin:admin@192.168.42.231', name: 'ipCamera'}
 	 */
 	getStreamConfiguration(options) {
@@ -121,9 +178,8 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/streamfiles/${streamFile}`;
 
 			//getting request object
-			let req = http.request(options, this.responceHandler(resolve, reject));
+			let req = http.request(options, this.responseHandler(resolve, reject));
 			req.on('error', (e) => {throw new Error(`problem with request: ${e.message}`)});
-
 			req.end();
 		});
 	}
@@ -133,34 +189,34 @@ class WowzaAPI {
 	 *
 	 * @method createRecorder
 	 * @param {Object} recorderParametres
-	 * @param {string} recorderParametres.restURI 
-	 * @param {string} recorderParametres.recorderName 
-	 * @param {string} recorderParametres.instanceName 
-	 * @param {string} recorderParametres.recorderState 
-	 * @param {boolean} recorderParametres.defaultRecorder 
-	 * @param {string} recorderParametres.segmentationType 
+	 * @param {string} recorderParametres.restURI
+	 * @param {string} recorderParametres.recorderName
+	 * @param {string} recorderParametres.instanceName
+	 * @param {string} recorderParametres.recorderState
+	 * @param {boolean} recorderParametres.defaultRecorder
+	 * @param {string} recorderParametres.segmentationType
 	 * @param {string} recorderParametres.outputPath  default value is [] and wowza should save files in [install-dir]/content, not tested
 	 * @param {string} recorderParametres.baseFile  default is [], and wowza should name file as a streamfile name, not tested
-	 * @param {string} recorderParametres.fileFormat 
-	 * @param {string} recorderParametres.fileVersionDelegateName 
-	 * @param {string} recorderParametres.fileTemplate 
-	 * @param {number} recorderParametres.segmentDuration 
-	 * @param {number} recorderParametres.segmentSize 
-	 * @param {string} recorderParametres.segmentSchedule 
-	 * @param {boolean} recorderParametres.recordData 
-	 * @param {boolean} recorderParametres.startOnKeyFrame 
-	 * @param {boolean} recorderParametres.splitOnTcDiscontinuity 
-	 * @param {number} recorderParametres.backBufferTime 
+	 * @param {string} recorderParametres.fileFormat
+	 * @param {string} recorderParametres.fileVersionDelegateName
+	 * @param {string} recorderParametres.fileTemplate
+	 * @param {number} recorderParametres.segmentDuration
+	 * @param {number} recorderParametres.segmentSize
+	 * @param {string} recorderParametres.segmentSchedule
+	 * @param {boolean} recorderParametres.recordData
+	 * @param {boolean} recorderParametres.startOnKeyFrame
+	 * @param {boolean} recorderParametres.splitOnTcDiscontinuity
+	 * @param {number} recorderParametres.backBufferTime
 	 * @param {string} recorderParametres.option should to work with one of: version | append | overwrite, but not tested
-	 * @param {boolean} recorderParametres.moveFirstVideoFrameToZero 
-	 * @param {number} recorderParametres.currentSize 
-	 * @param {number} recorderParametres.currentDuration 
-	 * @param {string} recorderParametres.recordingStartTime 
+	 * @param {boolean} recorderParametres.moveFirstVideoFrameToZero
+	 * @param {number} recorderParametres.currentSize
+	 * @param {number} recorderParametres.currentDuration
+	 * @param {string} recorderParametres.recordingStartTime
 	 * @param {Object} [options]
 	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
 	 * @param {string} [options.streamFile = 'myStream.stream'] name of a streamfile (default value can be another if it was passed to the class constructor)
 	 * @param {string} [options.appInstance = '_definst_'] name of an instance (default value can be another if it was passed to the class constructor)
-	 * @return {Promise} promise which resolve when rec will start  
+	 * @return {Promise} promise which resolve when rec will start
 	 * @example
 	 * wowza.createRecorder({
 	 * 	"restURI": "http://192.168.1.15:8087/v2/servers/_defaultServer_/vhosts/_defaultVHost_/applications/webrtc/instances/_definst_/streamrecorders/ipCamera.stream",
@@ -187,13 +243,13 @@ class WowzaAPI {
 	 * 	"currentDuration": 0,
 	 * 	"recordingStartTime": ""
 	 * },{
-	 * 	streamFile: 'ipCamera', 
+	 * 	streamFile: 'ipCamera',
 	 * 	application: 'webrtc',
 	 * 	appIstance: '_definst_'
 	 * })
 	 * 	.then(response => console.log(response))
 	 * 	.catch(errorMsg => console.log(errorMsg));
-	 * // Wowza answer example: 
+	 * // Wowza answer example:
 	 * //{ success: true, message: 'Recorder Created', data: null }
 	 */
 	createRecorder(recorderParametres, options) {
@@ -216,8 +272,8 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/streamrecorders/${streamFile}`;
 
 			//getting request object
-			let req = http.request(options, this.responceHandler(resolve, reject));
-			req.on('error', () => {throw new Error(`problem with request: ${e.message}`)});
+			let req = http.request(options, this.responseHandler(resolve, reject));
+			//req.on('error', () => {throw new Error(`problem with request: ${e.message}`)});
 
 			//write parametres
 			req.write(JSON.stringify(recorderParametres));
@@ -236,11 +292,11 @@ class WowzaAPI {
 	 * @return {Promise} promise which resolve when rec will stop
 	 * @example
 	 * wowza.stopRecording({
-	 * 	streamFile: 'ipCamera', 
+	 * 	streamFile: 'ipCamera',
 	 * 	application: 'webrtc',
 	 * 	appIstance: '_definst_'
 	 * }).then(response => console.log(response)).catch(errorMsg => console.log(errorMsg));
-	 * // Wowza answer example: 
+	 * // Wowza answer example:
 	 * // { success: true, message: 'Recording (ipCamera) stopped', data: null }
 	 */
 	stopRecording(options) {
@@ -263,9 +319,211 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/streamrecorders/${streamFile}/actions/stopRecording`;
 
 			//getting request object
-			let req = http.request(options, this.responceHandler(resolve, reject));
+			let req = http.request(options, this.responseHandler(resolve, reject));
 			req.on('error', () => {throw new Error(`problem with request: ${e.message}`)});
+			req.end();
+		});
+	}
 
+	/**
+	 * Updates an existing stream target
+	 *
+	 * @method deleteStreamTarget
+	 * @param {Object} [options]
+	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @param {string} [entryName]
+	 * @return {Promise} promise which resolve by object contains recorders params array
+	 */
+	deleteStreamTarget(options, entryName) {
+
+		let application = this.application;
+		let streamFile = this.streamFile;
+		let appInstance = this.appInstance;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+			appInstance = options.appInstance || this.appInstance;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = "DELETE";
+			options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries/${entryName}`;
+			//getting request object
+			let req = http.request(options, this.responseHandler(resolve, reject));
+			req.end();
+		});
+	}
+
+	/**
+	 * Updates an existing stream target
+	 *
+	 * @method getStreamTargetStatus
+	 * @param {Object} [options]
+	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @return {Promise} promise which resolve by object contains recorders params array
+	 */
+	getStreamTargetStatus(options) {
+
+		let application = this.application;
+		let streamFile = this.streamFile;
+		let appInstance = this.appInstance;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+			appInstance = options.appInstance || this.appInstance;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = "PUT";
+			//TODO: Find API
+			//options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries/${entryName}/actions/${action}`;
+			//getting request object
+			let req = http.request(options, this.responseHandler(resolve, reject));
+			req.end();
+		});
+	}
+
+	/**
+	 * Updates an existing stream target
+	 *
+	 * @method setStreamTargetStatus
+	 * @param {Object} [options]
+	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @param {boolean} [state]
+	 * @return {Promise} promise which resolve by object contains recorders params array
+	 */
+	setStreamTargetStatus(options, state) {
+
+		let application = this.application;
+		let streamFile = this.streamFile;
+		let appInstance = this.appInstance;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+			appInstance = options.appInstance || this.appInstance;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = "PUT";
+			//TODO: Find API
+			//options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries/${entryName}/actions/${action}`;
+			//getting request object
+			let req = http.request(options, this.responseHandler(resolve, reject));
+			req.end();
+		});
+	}
+
+	/**
+	 * Updates an existing stream target
+	 *
+	 * @method setStreamTargetOption
+	 * @param {Object} [options]
+	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @param {string} [entryName]
+	 * @param {string} [action]
+	 * @return {Promise} promise which resolve by object contains recorders params array
+	 */
+	setStreamTargetOption(options, entryName, action) {
+
+		let application = this.application;
+		let streamFile = this.streamFile;
+		let appInstance = this.appInstance;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+			appInstance = options.appInstance || this.appInstance;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = "PUT";
+			options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries/${entryName}/actions/${action}`;
+			//getting request object
+			let req = http.request(options, this.responseHandler(resolve, reject));
+			req.end();
+		});
+	}
+
+	/**
+	 * Updates an existing stream target
+	 *
+	 * @method setStreamTarget
+	 * @param {Object} [options]
+	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @param {Object} [config]
+	 * @return {Promise} promise which resolve by object contains recorders params array
+	 */
+	setStreamTarget(options, config) {
+
+		let application = this.application;
+		let streamFile = this.streamFile;
+		let appInstance = this.appInstance;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+			appInstance = options.appInstance || this.appInstance;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = (config.actionType == "update" ? 'PUT' : 'POST');
+			options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries/${config.entryName}`;
+			//getting request object
+			let req = http.request(options, this.responseHandler(resolve, reject));
+			req.write(JSON.stringify(config));
+			req.end();
+		});
+	}
+
+	/**
+	 * Get a list of stream targets
+	 *
+	 * @method getRecordersList
+	 * @param {Object} [options]
+	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @return {Promise} promise which resolve by object contains recorders params array
+	 * @example
+	 * wowza.getStreamTargets({
+	 * 	application: 'webrtc',
+	 * 	appIstance: '_definst_'
+	 * }).then( response => console.log(response)).catch( errorMsg => console.log(errorMsg));
+	 */
+	getStreamTargets(options) {
+		let application = this.application;
+		let appInstance = this.appInstance;
+
+		if (options) {
+			application = options.application || this.application;
+			appInstance = options.appInstance || this.appInstance;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'GET';
+			options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries`;
+
+			//getting request object
+			let req = http.request(options, this.responseHandler(resolve, reject));
 			req.end();
 		});
 	}
@@ -283,10 +541,10 @@ class WowzaAPI {
 	 * 	application: 'webrtc',
 	 * 	appIstance: '_definst_'
 	 * }).then( response => console.log(response)).catch( errorMsg => console.log(errorMsg));
-	 * // Wowza answer example: 
+	 * // Wowza answer example:
 	 * //{ serverName: '_defaultServer_',
 	 * //  instanceName: '_definst_',
-	 * //  streamrecorder: 
+	 * //  streamrecorder:
 	 * //   [ { recorderName: 'ipCamera',
 	 * //       instanceName: '_definst_',
 	 * //       recorderState: 'Waiting for stream',
@@ -328,7 +586,7 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/streamrecorders`;
 
 			//getting request object
-			let req = http.request(options, this.responceHandler(resolve, reject));
+			let req = http.request(options, this.responseHandler(resolve, reject));
 			req.on('error', (e) => {throw new Error(`problem with request: ${e.message}`)});
 
 			req.end();
@@ -345,7 +603,7 @@ class WowzaAPI {
 	 * @param {string} [options.appInstance = '_definst_'] name of an instance (default value can be another if it was passed to the class constructor)
 	 * @param {string} [options.mediaCasterType = 'rtp'] caster type (default value can be another if it was passed to the class constructor)
 	 * @return {Promise} promise which resolve when stream will connect
-	 * @example	 
+	 * @example
 	 * wowza.connectStreamFile({
 	 * 	streamFile: 'ipCamera',
 	 * 	application: 'webrtc',
@@ -382,7 +640,7 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/streamfiles/${ this._checkStreamFileName(streamFile) }/actions/connect?${data}`;
 
 			//getting request object
-			let req = http.request(options, this.responceHandler(resolve, reject));
+			let req = http.request(options, this.responseHandler(resolve, reject));
 			req.on('error', (e) => {throw new Error(`problem with request: ${e.message}`)});
 
 			req.end();
@@ -399,7 +657,7 @@ class WowzaAPI {
 	 * @param {string} [options.appInstance = '_definst_'] name of an instance (default value can be another if it was passed to the class constructor)
 	 * @param {string} [options.mediaCasterType = 'rtp'] caster type (default value can be another if it was passed to the class constructor)
 	 * @return {Promise} promise which resolve when stream will connect
-	 * @example	 
+	 * @example
 	 * wowza.disconnectStreamFile({
 	 * 	streamFile: 'ipCamera.stream',
 	 * 	application: 'webrtc',
@@ -429,7 +687,7 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/incomingstreams/${streamFile}/actions/disconnectStream`;
 
 			//getting request object
-			let req = http.request(options, this.responceHandler(resolve, reject));
+			let req = http.request(options, this.responseHandler(resolve, reject));
 
 			req.on('error', (e) => {throw new Error(`problem with request: ${e.message}`)});
 
@@ -437,15 +695,15 @@ class WowzaAPI {
 		});
 	}
 
-	// handler for responses from wowza engine, if wowza response status 200 handler resolve promise 
-	responceHandler(resolve, reject) {
+	// handler for responses from wowza engine, if wowza response status 200 handler resolve promise
+	responseHandler(resolve, reject) {
 
 		return (res) => {
 			if (res.statusCode < 300) {
 
-				let responceData = {};
-				res.on('data', (chunk) => responceData = JSON.parse(chunk));
-				res.on('end', () => resolve(responceData));
+				let responseData = "";
+				res.on('data', (chunk) => { responseData += chunk; });
+				res.on('end', () => { resolve(JSON.parse(responseData)); });
 
 			} else {
 				reject(res.statusMessage);
@@ -454,37 +712,36 @@ class WowzaAPI {
 	}
 
 	// for debugging with write a data to console
-	testRresponceHandler(resolve, reject) {
+	testResponseHandler(resolve, reject) {
 
 		return (res) => {
 			//console.log(res.getHeaders());
 			console.log('status');
 			console.log(res.statusCode);
-			if (res.statusCode < 300) {
+			//if (res.statusCode < 300) {
 
 				console.log(res.statusMessage);
 
-				let responceData = {};
+				let responseData = "";
 				res.on('data', (chunk) => {
-					responceData = JSON.parse(chunk);
-					console.log('DATA');
-					console.log(responceData);
+					console.log('DATA', chunk.length);
+					responseData+=chunk;
 				});
 				res.on('end', () => {
-					console.log('END RESPONSE');
-					resolve(responceData)
+					console.log('END RESPONSE', responseData);
+					resolve(JSON.parse(responseData));
 				});
 
-			} else {
+			/*} else {
 				reject(res.statusMessage);
-			}
+			}*/
 		}
 	}
 
-	// Connect streamfile wowza http method works only for streamfiles which name pattern is: [name].stream, 
+	// Connect streamfile wowza http method works only for streamfiles which name pattern is: [name].stream,
 	// and URL connect stream method need only [name] part for identificate streamfile.
 	// others URL methods works with all named streamfils and need full name in params.
-	// This way, necessary checking '.stream' at the end of the streamFile while connect to streamfile. 
+	// This way, necessary checking '.stream' at the end of the streamFile while connect to streamfile.
 	_checkStreamFileName(streamFile) {
 		let splitted = streamFile.split('.');
 		return splitted.pop() === 'stream' ? splitted.join('.') : streamFile;
