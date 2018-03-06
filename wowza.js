@@ -39,8 +39,10 @@ class WowzaAPI {
 		this.appInstance = options.appInstance || '_definst_';
 		this.mediaCasterType = options.mediaCasterType || 'rtp';
 		this.commonRequestUrl = `http://${this.wowzaAdress}:8087`;
+		this.authEnabled = false;
 		if ( options.username != '' && options.password != '' ){
 				console.log("using digest library");
+				this.authEnabled = true;
 				http = httpClient(options.username, options.password);
 		} else {
 				console.log("using native library");
@@ -87,8 +89,152 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/streamfiles`;
 
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
+		});
+	}
+
+	/**
+	 *Ability to update the existing stream file parameters
+	 *
+	 * @function updateStreamFileOptions
+	 * @param {Object} [options]
+	 * @param {string}  [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @param {Object} [options]
+	 * @return {Promise} promise which resolve by object which contains a resposne that looks like this:
+			 {
+			   "success": true,
+			   "message:" "",
+			   "data": null
+			}
+	 */
+	updateStreamFileOptions(options, streamFileAppConfig){
+		let application = this.application;
+		let streamFile = this.streamFile;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'PUT';
+			options.path = `${this.httpOptions.path}/applications/${application}/streamfiles/${streamFile}`;
+			options.body = JSON.stringify(streamFileAppConfig);
+			//getting request object
+			this.makeNetworkRequest(options, resolve, reject);
+		});
+	}
+
+	/**
+	 *Ability to update the existing stream file parameters
+	 *
+	 * @function updateAdvancedStreamFileOptions
+	 * @param {Object} [options]
+	 * @param {string}  [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @param {Object} [options]
+	 * @return {Promise} promise which resolve by object which contains a resposne that looks like this:
+			 {
+			   "success": true,
+			   "message:" "",
+			   "data": null
+			}
+	 * @example this is what a streamFileAppConfigAdv looks like
+	 {
+		  "sourceControlDriver": "", //optional
+		  "advancedSettings": [
+		    {
+		      "sectionName": "",
+		      "canRemove": false,
+		      "defaultValue": "",
+		      "documented": false,
+		      "name": "",
+		      "section": "",
+		      "type": "",
+		      "value": "",
+		      "enabled": false
+		    }
+		  ],
+			//required should be _defaultServer_ unless changed
+		  "serverName": "",
+			//optional
+		  "saveFieldList": [
+		    ""
+		  ],
+			//optional
+		  "version": ""
+		}
+	 */
+	updateAdvancedStreamFileOptions(options, streamFileAppConfigAdv){
+		let application = this.application;
+		let streamFile = this.streamFile;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'PUT';
+			options.body = JSON.stringify(streamFileAppConfigAdv);
+			options.path = `${this.httpOptions.path}/applications/${application}/streamfiles/${streamFile}/adv`;
+
+			//getting request object
+			this.makeNetworkRequest(options, resolve, reject);
+		});
+	}
+
+	/**
+	 *Adds a stream file to a given application
+	 *
+	 * @function addStreamFile
+	 * @param {Object} [options]
+	 * @param {string}  [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
+	 * @return {Promise} promise which resolve by object which contains array of streamFiles and it's confifurations
+	 *
+	 */
+	addStreamFile(options, streamFileAppConfig){
+		let application = this.application;
+
+		if (options) {
+			application = options.application || this.application;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'POST';
+			options.path = `${this.httpOptions.path}/applications/${application}/streamfiles`;
+			//the http library can be digest or non-digest, options.body allows digest to properly process the request
+			options.body = JSON.stringify(streamFileAppConfig);
+			this.makeNetworkRequest(options, resolve, reject);
+		});
+	}
+
+	deleteStreamFile(options){
+		let application = this.application;
+		let streamFile = this.streamFile;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'DELETE';
+			options.path = `${this.httpOptions.path}/applications/${application}/streamfiles/${streamFile}`;
+
+			//getting request object
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -107,28 +253,21 @@ class WowzaAPI {
 			options.method = 'GET';
 			options.path = `${this.httpOptions.path}/applications/${application}`;
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
 	/**
 	 *Get specific stream configuration
 	 *
-	 * @function getStreamConfiguration
+	 * @function getStreamFileConfiguration
 	 * @param {Object} [options]
 	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
 	 * @param {string} [options.streamFile = 'myStream.stream'] name of a streamfile (default value can be another if it was passed to the class constructor)
 	 * @return {Promise} promise which resolve by stream configurations object
 	 *
-	 * @example
-	 * wowza.getStreamConfiguration()
-	 *	.then(response => console.log(response))
-	 *	.catch(errorMsg => console.log(errorMsg));
-	 * // Wowza answer example:
-	 * // {version: '1488715914000', serverName: '_defaultServer_', uri: 'rtsp://admin:admin@192.168.42.231', name: 'ipCamera'}
 	 */
-	getStreamConfiguration(options) {
+	getStreamFileConfiguration(options) {
 
 		let application = this.application;
 		let streamFile = this.streamFile;
@@ -146,8 +285,7 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/streamfiles/${streamFile}`;
 
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -237,13 +375,9 @@ class WowzaAPI {
 			let options = Object.assign({}, this.httpOptions);
 			options.method = 'POST';
 			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/streamrecorders/${streamFile}`;
-
+			options.body = JSON.stringify(recorderParametres);
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-
-			//write parametres
-			req.write(JSON.stringify(recorderParametres));
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -285,8 +419,7 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/streamrecorders/${streamFile}/actions/stopRecording`;
 
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -318,8 +451,7 @@ class WowzaAPI {
 			options.method = "DELETE";
 			options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries/${entryName}`;
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -352,9 +484,7 @@ class WowzaAPI {
 			options.method = "PUT";
 			options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries/${entryName}/actions/${action}`;
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -385,17 +515,16 @@ class WowzaAPI {
 			let options = Object.assign({}, this.httpOptions);
 			options.method = (config.actionType == "update" ? 'PUT' : 'POST');
 			options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries/${config.entryName}`;
+			options.body = JSON.stringify(config);
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-			req.write(JSON.stringify(config));
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
 	/**
 	 * Get a list of stream targets
 	 *
-	 * @method getRecordersList
+	 * @method getStreamTargets
 	 * @param {Object} [options]
 	 * @param {string} [options.application = 'live'] name of an application (default value can be another if it was passed to the class constructor)
 	 * @return {Promise} promise which resolve by object contains recorders params array
@@ -422,9 +551,7 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/pushpublish/mapentries`;
 
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -486,11 +613,7 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/streamrecorders`;
 
 			//getting request object
-			console.log("calling getRecordersList");
-
-			let req = this.makeNetworkRequest(options, resolve, reject);
-
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -524,7 +647,7 @@ class WowzaAPI {
 			application = options.application || this.application;
 			streamFile = options.streamFile || this.streamFile;
 			appInstance = options.appInstance || this.appInstance;
-			mediaCasterType = options.mediaCasterType || mediaCasterType;
+			mediaCasterType = options.mediaCasterType || this.mediaCasterType;
 		}
 
 		return new Promise((resolve, reject) => {
@@ -541,9 +664,54 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/streamfiles/${ this._checkStreamFileName(streamFile) }/actions/connect?${data}`;
 
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
+			this.makeNetworkRequest(options, resolve, reject);
+		});
+	}
 
-			req.end();
+	getIncomingStreamInfo(options) {
+		let application = this.application;
+		let streamFile = this.streamFile;
+		let appInstance = this.appInstance;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+			appInstance = options.appInstance || this.appInstance;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'GET';
+			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/incomingstreams/${streamFile}.stream`;
+
+			//getting request object
+			this.makeNetworkRequest(options, resolve, reject);
+		});
+	}
+
+
+	getIncomingStreamStats(options) {
+		let application = this.application;
+		let streamFile = this.streamFile;
+		let appInstance = this.appInstance;
+
+		if (options) {
+			application = options.application || this.application;
+			streamFile = options.streamFile || this.streamFile;
+			appInstance = options.appInstance || this.appInstance;
+		}
+
+		return new Promise((resolve, reject) => {
+
+			//getting a clone of the common httpOptions object and change it's path to necessary
+			let options = Object.assign({}, this.httpOptions);
+			options.method = 'GET';
+			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/incomingstreams/${streamFile}.stream/monitoring/current`;
+
+			//getting request object
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
@@ -566,7 +734,7 @@ class WowzaAPI {
 	 * //Wowza answer example:
  	 * //{ success: true, message: ''Publish stream successfully stopped [webrtc/_definst_]: mp4:ipCamera.stream'',data: null }
 	 */
-	disconnectStreamFile(options) {
+	disconnectIncomingStream(options) {
 
 		let application = this.application;
 		let streamFile = this.streamFile;
@@ -587,17 +755,46 @@ class WowzaAPI {
 			options.path = `${this.httpOptions.path}/applications/${application}/instances/${appInstance}/incomingstreams/${streamFile}/actions/disconnectStream`;
 
 			//getting request object
-			let req = this.makeNetworkRequest(options, resolve, reject);
-
-			req.end();
+			this.makeNetworkRequest(options, resolve, reject);
 		});
 	}
 
+	makeTestNetworkRequest(options, resolve, reject){
+		var req, body;
+		console.log(9);
+		try {
+				if ( options.body && this.authEnabled == false ){
+					body = options.body;
+					delete options.body;
+				}
+				console.log(12, options);
+				req = http.request(options, this.testResponseHandler(resolve, reject), reject);
+				if ( body && this.authEnabled == false ){
+					req.write(body);
+				}
+				req.on('error', reject);
+				req.end();
+		} catch(e){
+			console.log(11);
+			reject(e);
+		}
+		console.log(10);
+		return req;
+	}
+
 	makeNetworkRequest(options, resolve, reject){
-			var req;
+			var req, body;
 			try {
+					if ( options.body && this.authEnabled == false ){
+						body = options.body;
+						delete options.body;
+					}
 					req = http.request(options, this.responseHandler(resolve, reject), reject);
+					if ( body && this.authEnabled == false ){
+						req.write(body);
+					}
 					req.on('error', reject);
+					req.end();
 			} catch(e){
 				reject(e);
 			}
@@ -638,7 +835,7 @@ class WowzaAPI {
 					responseData+=chunk;
 				});
 				res.on('end', () => {
-					console.log('END RESPONSE', responseData);
+					console.log('END RESPONSE', res.req.path, res.req._header, responseData);
 					resolve(JSON.parse(responseData));
 				});
 
