@@ -27,6 +27,8 @@ var HTTPDigest = function () {
     var self = this;
     return http.request(options, function (res) {
       self._handleResponse(options, res, callback);
+    }, function(err){
+      console.log("request err", err);
     });
   };
 
@@ -71,13 +73,21 @@ var HTTPDigest = function () {
     // Setup response parameters
     var authParams = {
       username: this.username,
-      realm: challenge.realm,
-      nonce: challenge.nonce,
       uri: options.path,
-      qop: challenge.qop,
       response: response.digest('hex'),
-      opaque: challenge.opaque
     };
+    if ( challenge.realm ){
+      authParams.realm = challenge.realm;
+    }
+    if ( challenge.qop ){
+      authParams.qop = challenge.qop;
+    }
+    if ( challenge.opaque ){
+      authParams.opaque = challenge.opaque;
+    }
+    if ( challenge.nonce ){
+      authParams.nonce = challenge.nonce;
+    }
     if (cnonce) {
       authParams.nc = nc;
       authParams.cnonce = cnonce;
@@ -86,10 +96,18 @@ var HTTPDigest = function () {
     var headers = options.headers || {};
     headers.Authorization = this._compileParams(authParams);
     options.headers = headers;
-
-    http.request(options, function (res) {
+    if ( options && options.body ){
+      options.headers['Content-Length'] = options.body.length;
+    }
+    var req = http.request(options, function (res) {
       callback(res);
-    }).end();
+    });
+    if ( options && options.body ){
+      req.write(options.body);
+      //TODO: Figure out why this hack is nessecary
+      options.headers['Content-Length'] = 0;
+    }
+    req.end();
   };
 
   //
